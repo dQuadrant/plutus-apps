@@ -19,6 +19,7 @@ import System.Directory (createDirectoryIfMissing)
 main :: IO ()
 main = do
   o <- Cli.parseOptions
+  putStrLn $ show o
   createDirectoryIfMissing True (Cli.optionsDbPath o)
   c <- defaultConfigStdout
   withTrace c "marconi" $ \trace ->

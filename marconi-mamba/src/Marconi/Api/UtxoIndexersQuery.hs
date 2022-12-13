@@ -27,7 +27,7 @@ import Marconi.Api.Types (DBConfig (DBConfig, utxoConn),
                           QueryExceptions (AddressNotInListError, QueryError), TargetAddresses,
                           UtxoQueryTMVar (UtxoQueryTMVar), UtxoTxOutReport (UtxoTxOutReport), unUtxoIndex)
 import Marconi.Index.Utxo (UtxoIndex, UtxoRow (UtxoRow, _reference), toRows)
-import Marconi.Types (CardanoAddress, TxOutRef)
+import Marconi.Types (CardanoAddress, TxOutRef, TargetAddresses (..))
 import RewindableIndex.Index.VSqlite qualified as Ix
 
 -- | Bootstraps the utxo query environment.
@@ -56,8 +56,12 @@ findAll
     -> IO (Set UtxoTxOutReport)     -- ^ set of corresponding TxOutRefs
 findAll env = fromList <$> forConcurrently addresses f
     where
-        addresses = NonEmpty.toList (env ^. queryAddresses)
-        f  :: CardanoAddress -> IO (UtxoTxOutReport)
+        addresses = case env ^. queryAddresses of
+          TargetAllAddresses -> [] -- targetting by all address for query is not supported
+          NoTargetAddresses -> []
+          TargetAddresses ne -> NonEmpty.toList ne
+
+        f  :: CardanoAddress -> IO UtxoTxOutReport
         f addr = UtxoTxOutReport (CApi.serialiseAddress addr) <$> findByCardanoAddress env (CApi.toAddressAny addr)
 
 -- | Query utxos address address
@@ -86,7 +90,10 @@ findByAddress env addressText =
     let
         f :: Either CApi.Bech32DecodeError CardanoAddress -> IO (Either QueryExceptions UtxoTxOutReport)
         f (Right address)
-            | address `elem` (env ^. queryAddresses) = -- allow for targetAddress search only
+            | (case env ^. queryAddresses of
+                        TargetAllAddresses -> False
+                        NoTargetAddresses -> False
+                        TargetAddresses ne -> address `elem` ne ) = -- allow for targetAddress search only
               (pure . CApi.toAddressAny $ address)
               >>= findByCardanoAddress env
               >>= pure . Right . UtxoTxOutReport addressText
@@ -146,8 +153,10 @@ reportQueryAddresses
 reportQueryAddresses env
     = pure
     . fromList
-    . NonEmpty.toList
-    $ (env ^. queryAddresses )
+    $ (case env ^. queryAddresses of
+                TargetAllAddresses -> []
+                NoTargetAddresses -> []
+                TargetAddresses ne -> NonEmpty.toList  ne)
 
 reportQueryCardanoAddresses
     :: DBQueryEnv
@@ -159,6 +168,8 @@ reportBech32Addresses
     -> Set Text
 reportBech32Addresses env
     = fromList
-    . NonEmpty.toList
     . fmap CApi.serialiseAddress
-    $ (env ^. queryAddresses )
+    $ (case env ^. queryAddresses of
+            TargetAllAddresses -> []
+            NoTargetAddresses -> []
+            TargetAddresses ne -> NonEmpty.toList ne)

@@ -1,9 +1,11 @@
 {-# LANGUAGE PolyKinds #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use lambda-case" #-}
 
 module Marconi.CLI
     (chainPointParser
-    , multiString
-    , parseCardanoAddresses
+    , targetAddressParser
+    , parseCardanoAddress
     , pNetworkId
     , Options (..)
     , parseOptions
@@ -14,15 +16,19 @@ module Marconi.CLI
 
 import Cardano.Api (ChainPoint, NetworkId)
 import Cardano.Api qualified as C
-import Control.Applicative (optional, some)
 import Data.ByteString.Char8 qualified as C8
 import Data.List (nub)
-import Data.List.NonEmpty (fromList)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Proxy (Proxy (Proxy))
 import Data.Text (pack)
-import Marconi.Types (CardanoAddress, TargetAddresses)
+import Marconi.Types (CardanoAddress, TargetAddresses (TargetAllAddresses, NoTargetAddresses, TargetAddresses))
 import Options.Applicative qualified as Opt
 import System.FilePath ((</>))
+import Data.Functor ((<&>))
+import Control.Applicative (Alternative(some), (<|>))
+import Options.Applicative (optional)
+import qualified Debug.Trace as Debug
+import Options.Applicative.Types (ReadM)
 
 chainPointParser :: Opt.Parser C.ChainPoint
 chainPointParser =
@@ -69,18 +75,34 @@ pTestnetMagic = C.NetworkMagic <$> Opt.option Opt.auto
 
 -- | parses CLI params to valid NonEmpty list of Shelley addresses
 -- We error out if there are any invalid addresses
-multiString :: Opt.Mod Opt.OptionFields [CardanoAddress] -> Opt.Parser TargetAddresses
-multiString desc = fromList . concat <$> some single
+targetAddressParser :: Opt.Mod Opt.OptionFields TargetAddresses -> Opt.Parser TargetAddresses
+targetAddressParser desc =  mconcat <$> some single
   where
-    single = Opt.option (Opt.str >>= (pure . parseCardanoAddresses)) desc
+    single = Opt.option (Opt.str >>= parseCardanoAddress) desc
 
-parseCardanoAddresses :: String -> [CardanoAddress]
-parseCardanoAddresses =  nub
-    . fromJustWithError
-    . traverse (deserializeToCardano . pack)
-    . words
+
+
+
+-- multiString :: Opt.Mod Opt.OptionFields [CardanoAddress] -> Opt.Parser TargetAddresses
+-- multiString desc = fromList . concat <$> some single
+--   where
+--     single = Opt.option (Opt.str >>= (pure . parseCardanoAddresses)) desc
+
+-- parseCardanoAddresses :: String -> [CardanoAddress]
+-- parseCardanoAddresses =  nub
+--     . fromJustWithError
+--     . traverse (deserializeToCardano . pack)
+--     . words
+--     where
+--         deserializeToCardano = C.deserialiseFromBech32 (C.proxyToAsType Proxy)
+
+parseCardanoAddress :: String -> ReadM  TargetAddresses
+parseCardanoAddress = deserialiseToCardano
     where
-        deserializeToCardano = C.deserialiseFromBech32 (C.proxyToAsType Proxy)
+      deserialiseToCardano "*" = pure  TargetAllAddresses
+      deserialiseToCardano   v = case  C.deserialiseFromBech32 (C.proxyToAsType Proxy) (pack  v) of
+          Right addr ->  pure $ TargetAddresses (addr :| [])
+          Left _  -> fail $ "Invalid address \"" ++ v++"\""
 
 
 -- | This executable is meant to exercise a set of indexers (for now datumhash -> datum)
@@ -100,7 +122,7 @@ data Options = Options
     optionsDisableUtxo     :: Bool,
     optionsDisableDatum    :: Bool,
     optionsDisableScript   :: Bool,
-    optionsTargetAddresses :: Maybe TargetAddresses
+    optionsTargetAddresses :: !TargetAddresses -- `!` to make sure that the address is parsed before attempting socket connection
   }
   deriving (Show)
 parseOptions :: IO Options
@@ -129,13 +151,10 @@ optionsParser =
                       <> Opt.help "disable script-tx indexers."
                       <> Opt.showDefault
                      )
-    <*> optAddressesParser (Opt.long "addresses-to-index"
+    <*> targetAddressParser (Opt.long "addresses-to-index"
                             <> Opt.short 'a'
-                            <> Opt.help ("Becch32 Shelley addresses to index."
+                            <> Opt.help ("Becch32 Shelley addresses to index. '*' for all addresses."
                                    <> " i.e \"--address-to-index address-1 --address-to-index address-2 ...\"" ) )
-
-optAddressesParser :: Opt.Mod Opt.OptionFields [CardanoAddress] -> Opt.Parser (Maybe TargetAddresses)
-optAddressesParser =  optional . multiString
 
 utxoDbName :: FilePath
 utxoDbName = "utxodb"

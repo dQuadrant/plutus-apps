@@ -19,7 +19,7 @@ import Options.Applicative (Parser, execParser, help, helper, info, long, metava
 import Marconi.Api.Types (DBQueryEnv, HasDBQueryEnv (queryTMVar), HasJsonRpcEnv (queryEnv), TargetAddresses,
                           unUtxoIndex)
 import Marconi.Bootstrap (bootstrapHttp, bootstrapJsonRpc)
-import Marconi.CLI (multiString)
+import Marconi.CLI (targetAddressParser)
 import Marconi.Index.Utxo (Depth (Depth), open)
 
 
@@ -34,7 +34,7 @@ cliParser = CliOptions
                               <> short 'd'
                               <> metavar "FILENAME"
                               <> help "Path to the utxo SQLite database.")
-     <*> multiString (long "addresses-to-index"
+     <*> targetAddressParser (long "addresses-to-index"
                         <> help ("Becch32 Shelley addresses to index."
                                  <> " i.e \"--address-to-index address-1 --address-to-index address-2 ...\"" ) )
 

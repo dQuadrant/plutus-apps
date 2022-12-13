@@ -37,7 +37,7 @@ import Marconi.Index.Datum qualified as Datum
 import Marconi.Index.ScriptTx qualified as ScriptTx
 import Marconi.Index.Utxo (TxOut, UtxoIndex, UtxoUpdate (UtxoUpdate, _inputs, _outputs, _slotNo))
 import Marconi.Index.Utxo qualified as Utxo
-import Marconi.Types (TargetAddresses, TxOutRef, pattern CurrentEra, txOutRef)
+import Marconi.Types (TargetAddresses (..), TxOutRef, pattern CurrentEra, txOutRef, AddressList)
 
 import RewindableIndex.Index.VSplit qualified as Ix
 import RewindableIndex.Storable qualified as Storable
@@ -70,14 +70,17 @@ getDatums (BlockInMode (Block (BlockHeader slotNo _ _) txs) _) = concatMap extra
 -- UtxoIndexer
 getOutputs
   :: C.IsCardanoEra era
-  => Maybe TargetAddresses
+  =>  TargetAddresses
   -> C.Tx era
   -> Maybe [ (TxOut, TxOutRef) ]
 getOutputs maybeTargetAddresses (C.Tx txBody@(C.TxBody C.TxBodyContent{C.txOuts}) _) =
     do
-        let indexersFilter = case maybeTargetAddresses of
-                Just targetAddresses -> filter (isInTargetTxOut targetAddresses)
-                _                    -> id -- no filtering is applied
+        let indexersFilter =case maybeTargetAddresses of
+              TargetAllAddresses -> id
+              NoTargetAddresses -> id
+              TargetAddresses targets ->  filter (isInTargetTxOut targets)
+                -- Just targetAddresses ->
+                -- _                    -> id -- no filtering is applied
         outs  <- either (const Nothing) Just
             . traverse (C.eraCast CurrentEra)
             . indexersFilter
@@ -99,7 +102,7 @@ getUtxoUpdate
   :: C.IsCardanoEra era
   => SlotNo
   -> [C.Tx era]
-  -> Maybe TargetAddresses
+  ->  TargetAddresses
   -> UtxoUpdate
 getUtxoUpdate slot txs maybeAddresses =
   let ins  = foldl' Set.union Set.empty $ getInputs <$> txs
@@ -154,7 +157,7 @@ datumWorker Coordinator{_barrier} ch path = Datum.open path (Datum.Depth 2160) >
 
 -- | does the transaction contain a targetAddress
 isInTargetTxOut
-    :: TargetAddresses              -- ^ non empty list of target address
+    :: AddressList              -- ^ non empty list of target address
     -> C.TxOut C.CtxTx era    -- ^  a cardano transaction out that contains an address
     -> Bool
 isInTargetTxOut targetAddresses (C.TxOut address _ _ _) = case address of
@@ -179,7 +182,7 @@ queryAwareUtxoWorker (UtxoQueryTMVar utxoIndexer) targetAddresses Coordinator{_b
         event <- atomically $ readTChan ch
         case event of
             RollForward (BlockInMode (Block (BlockHeader slotNo _ _) txs) _) _ct -> do
-                let utxoRow = getUtxoUpdate slotNo txs (Just targetAddresses)
+                let utxoRow = getUtxoUpdate slotNo txs targetAddresses
                 Ix.insert utxoRow index >>= innerLoop
             RollBackward cp _ct -> do
                 events <- Ix.getEvents (index ^. Ix.storage)
@@ -190,8 +193,8 @@ queryAwareUtxoWorker (UtxoQueryTMVar utxoIndexer) targetAddresses Coordinator{_b
                         Ix.rewind offset index
 
 
-utxoWorker :: Maybe TargetAddresses -> Worker
-utxoWorker maybeTargetAddresses Coordinator{_barrier} ch path =
+utxoWorker ::  TargetAddresses -> Worker
+utxoWorker targetAddresses Coordinator{_barrier} ch path =
     Utxo.open path (Utxo.Depth 2160) >>= innerLoop
   where
     innerLoop :: UtxoIndex -> IO ()
@@ -200,7 +203,7 @@ utxoWorker maybeTargetAddresses Coordinator{_barrier} ch path =
       event <- atomically $ readTChan ch
       case event of
         RollForward (BlockInMode (Block (BlockHeader slotNo _ _) txs) _) _ct -> do
-          let utxoRow = getUtxoUpdate slotNo txs maybeTargetAddresses
+          let utxoRow = getUtxoUpdate slotNo txs targetAddresses
           Ix.insert utxoRow index >>= innerLoop
         RollBackward cp _ct -> do
           events <- Ix.getEvents (index ^. Ix.storage)
@@ -246,17 +249,17 @@ combinedIndexer
   :: Maybe FilePath
   -> Maybe FilePath
   -> Maybe FilePath
-  -> Maybe TargetAddresses
+  -> TargetAddresses
   -> S.Stream (S.Of (ChainSyncEvent (BlockInMode CardanoMode))) IO r
   -> IO ()
-combinedIndexer utxoPath datumPath scriptTxPath maybeTargetAddresses = combineIndexers remainingIndexers
+combinedIndexer utxoPath datumPath scriptTxPath targetAddresses = combineIndexers remainingIndexers
   where
     liftMaybe (worker, maybePath) = case maybePath of
       Just path -> Just (worker, path)
       _         -> Nothing
     pairs =
         [
-            (utxoWorker maybeTargetAddresses, utxoPath)
+            (utxoWorker targetAddresses, utxoPath)
             , (datumWorker, datumPath)
             , (scriptTxWorker (\_ -> pure []), scriptTxPath)
         ]

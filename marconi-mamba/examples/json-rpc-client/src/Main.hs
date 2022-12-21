@@ -22,7 +22,7 @@ main :: IO ()
 main = do
     env <- mkClientEnv <$>
         newManager defaultManagerSettings <*>
-        parseBaseUrl "http://localhost:3000"
+        parseBaseUrl "http://localhost:3345"
     void . flip runClientM env $ do
         void . jsonRpcPrint $ "Starting RPC calls"
         liftIO . print =<< add (2, 10)

@@ -60,7 +60,27 @@ library json-rpc
     , servant-client-core
     , servant-server
     , text
+    , vector
 
+library json-rpc-simple
+  import:          lang
+  hs-source-dirs:  json-rpc-simple
+  exposed-modules:
+    Marconi.SimpleRpc
+    Marconi.Rpc.Types
+  ------------------------
+  -- Non-IOG dependencies
+  ------------------------
+  build-depends:
+    , aeson
+    , base                 >=4.9 && <5
+    , containers
+    , http-media
+    , servant
+    , servant-client-core
+    , servant-server
+    , text
+    , vector
 library
   import:          lang
   hs-source-dirs:  src
@@ -77,6 +97,7 @@ library
   build-depends:
     , cardano-streaming
     , json-rpc
+    , json-rpc-simple
     , marconi
     , rewindable-index
 
@@ -104,6 +125,8 @@ library
     , text
     , time
     , warp
+    , vector
+
 
 executable marconi-mamba
   import:         lang
@@ -116,6 +139,7 @@ executable marconi-mamba
   build-depends:
     , marconi
     , marconi-mamba
+    , json-rpc-simple
 
   ------------------------
   -- Non-IOG dependencies

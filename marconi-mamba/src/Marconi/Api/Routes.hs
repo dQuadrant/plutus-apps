@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Marconi.Api.Types (UtxoTxOutReport)
 import Marconi.JsonRpc.Types (JsonRpc, JsonRpcNotification, RawJsonRpc)
 import Servant.API (Get, JSON, NoContent, PlainText, Post, ReqBody, (:<|>), (:>))
+import Marconi.SimpleRpc (SimpleRpcAPI)
 type Echo                   = JsonRpc "echo" String String String
 type TxOutRefReport         = JsonRpc "utxoTxOutReport" String String UtxoTxOutReport
 type TxOutRefsReport        = JsonRpc "utxoTxOutReports" Int String (Set UtxoTxOutReport)
@@ -37,6 +38,6 @@ type RestAPI
         :<|> GetTargetAddresses
         :<|> PrintMessage)
 
-type API = JsonRpcAPI :<|> RestAPI
+type API = JsonRpcAPI :<|> RestAPI :<|> SimpleRpcAPI
 
 type NonEndpoint = "json-rpc" :> RawJsonRpc (JsonRpc "launch-missles" Int String Bool)

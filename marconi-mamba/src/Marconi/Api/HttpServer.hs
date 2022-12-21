@@ -25,6 +25,7 @@ import Marconi.Server.Types ()
 import Network.Wai.Handler.Warp (runSettings)
 import Servant.API (NoContent (NoContent), (:<|>) ((:<|>)))
 import Servant.Server (Handler, Server, serve)
+import Marconi.SimpleRpc (simpleRpcServer)
 
 -- | bootstraps the he http server
 bootstrap :: JsonRpcEnv -> IO ()
@@ -42,6 +43,7 @@ server env
       :<|> (getTime
             :<|> getTargetAddresses env
             :<|> printMessage env)
+      :<|> simpleRpcServer
 
 -- | prints message to console
 --  Used for testing the server from console

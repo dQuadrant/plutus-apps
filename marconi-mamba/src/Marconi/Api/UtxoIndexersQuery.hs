@@ -29,6 +29,7 @@ import Marconi.Api.Types (DBConfig (DBConfig, utxoConn),
 import Marconi.Index.Utxo (UtxoIndex, UtxoRow (UtxoRow, _reference), toRows)
 import Marconi.Types (CardanoAddress, TxOutRef, TargetAddresses (..))
 import RewindableIndex.Index.VSqlite qualified as Ix
+import Data.Functor ((<&>))
 
 -- | Bootstraps the utxo query environment.
 -- The module is responsible for accessing SQLite for quries.
@@ -90,19 +91,20 @@ findByAddress env addressText =
     let
         f :: Either CApi.Bech32DecodeError CardanoAddress -> IO (Either QueryExceptions UtxoTxOutReport)
         f (Right address)
-            | (case env ^. queryAddresses of
-                        TargetAllAddresses -> False
-                        NoTargetAddresses -> False
-                        TargetAddresses ne -> address `elem` ne ) = -- allow for targetAddress search only
-              (pure . CApi.toAddressAny $ address)
-              >>= findByCardanoAddress env
-              >>= pure . Right . UtxoTxOutReport addressText
+            |isIndexed address  = 
+                -- allow for targetAddress search only
+              ((pure . CApi.toAddressAny $ address)
+              >>= findByCardanoAddress env) 
+              <&>  (Right . UtxoTxOutReport addressText)
             | otherwise = pure . Left . AddressNotInListError . QueryError $
               unpack addressText <> " not in the provided target addresses"
         f (Left e) = pure . Left $ QueryError (unpack  addressText
                      <> " generated error: "
                      <> show e)
-
+        isIndexed addr = (case env ^. queryAddresses of
+                        TargetAllAddresses -> True
+                        NoTargetAddresses -> False
+                        TargetAddresses ne -> addr `elem` ne )
     in
         f $ CApi.deserialiseFromBech32 CApi.AsShelleyAddress addressText
 
@@ -118,11 +120,11 @@ queryInMemory address ix =
         isTargetAddress (UtxoRow a _ ) =  address == a
     in
         Ix.getBuffer (ix ^. Ix.storage)
-        >>=  pure
-            . fromList
-            . fmap _reference
-            . filter isTargetAddress
-            . concatMap toRows
+            >>=  pure
+                . fromList
+                . fmap _reference
+                . filter isTargetAddress
+                . concatMap toRows
 
 -- | Execute the query function
 -- We must stop the utxo inserts before doing the query

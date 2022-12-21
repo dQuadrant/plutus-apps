@@ -16,7 +16,7 @@ args = CliArgs
   <$> Opt.strOption (Opt.long "socket-path" <> Opt.metavar "FILE" <> Opt.help "Socket path to node")
   <*> Opt.strOption (Opt.long "utxo-db" <> Opt.metavar "FILE" <> Opt.help "Path to the utxo database.")
   <*> (optional . Opt.option  Opt.auto) (
-        Opt.long "http-port" <> Opt.metavar "HTTP-PORT" <> Opt.help "JSON-RPC http port number, default is port 3000.")
+        Opt.long "http-port" <> Opt.metavar "HTTP-PORT" <> Opt.help "JSON-RPC http port number, default is port 3345.")
   <*> pNetworkId
   <*> targetAddressParser (Opt.long "addresses-to-index"
                         <> Opt.help ("Becch32 Shelley addresses to index."

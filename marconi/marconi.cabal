@@ -94,6 +94,7 @@ library
     , streaming
     , text
     , time
+    , aeson
 
 executable marconi
   import:         lang

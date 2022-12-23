@@ -181,7 +181,8 @@ queryAwareUtxoWorker (UtxoQueryTMVar utxoIndexer) targetAddresses Coordinator{_b
         signalQSemN _barrier 1
         event <- atomically $ readTChan ch
         case event of
-            RollForward (BlockInMode (Block (BlockHeader slotNo _ _) txs) _) _ct -> do
+            RollForward (BlockInMode (Block (BlockHeader slotNo _ no) txs) _) _ct -> do
+                
                 let utxoRow = getUtxoUpdate slotNo txs targetAddresses
                 Ix.insert utxoRow index >>= innerLoop
             RollBackward cp _ct -> do

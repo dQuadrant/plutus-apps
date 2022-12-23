@@ -44,7 +44,7 @@ main = do
     putStrLn $ "Starting the Example RPC http-server:"
         <>"\nport =" <> show (3000 :: Int)
         <> "\nutxo-db =" <> dbpath
-        <> "\nnumber of addresses to index = " <> show (length addresses)
+        <> "\nnumber of addresses to index = "
 
     env <- bootstrapJsonRpc dbpath Nothing addresses Mainnet
     race_ (bootstrapHttp env) (mocUtxoIndexer (env ^. queryEnv) )

@@ -43,7 +43,7 @@ server env
       :<|> (getTime
             :<|> getTargetAddresses env
             :<|> printMessage env)
-      :<|> simpleRpcServer
+      :<|> simpleRpcServer env
 
 -- | prints message to console
 --  Used for testing the server from console

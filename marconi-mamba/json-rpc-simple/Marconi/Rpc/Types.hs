@@ -1,5 +1,7 @@
 module Marconi.Rpc.Types
+
 where
+
 import qualified Data.Text as T
 import Data.Aeson ( FromJSON(parseJSON), (.:), (.:?), toJSON, object, (.=) )
 import qualified Data.Aeson as A

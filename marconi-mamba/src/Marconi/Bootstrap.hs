@@ -19,6 +19,7 @@ import Marconi.Indexers (combineIndexers, queryAwareUtxoWorker)
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Prettyprinter (defaultLayoutOptions, layoutPretty, pretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
+import Marconi.Logging (logging)
 
 
 -- | Bootstraps the JSON-RPC  http server with appropriate settings and marconi cache
@@ -53,11 +54,11 @@ bootstrapUtxoIndexers
 bootstrapUtxoIndexers (CliArgs socket dbPath _ networkId targetAddresses) env =
     do
         let qsem = env ^. queryEnv . queryTMVar
-            indexers = combineIndexers [( queryAwareUtxoWorker qsem targetAddresses , dbPath)]
+            indexers = combineIndexers [( queryAwareUtxoWorker qsem targetAddresses , dbPath)] 
             chainPoint = ChainPointAtGenesis
         c <- defaultConfigStdout
         withTrace c "marconi-mamba" $ \trace ->
-          withChainSyncEventStream socket networkId chainPoint indexers
+          withChainSyncEventStream socket networkId chainPoint (indexers . logging trace)
           `catch` \NoIntersectionFound ->
             logError trace $
                 renderStrict $

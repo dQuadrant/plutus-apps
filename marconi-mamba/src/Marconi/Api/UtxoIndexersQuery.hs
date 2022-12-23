@@ -26,7 +26,7 @@ import Marconi.Api.Types (DBConfig (DBConfig, utxoConn),
                           HasDBQueryEnv (dbConf, queryAddresses, queryTMVar),
                           QueryExceptions (AddressNotInListError, QueryError), TargetAddresses,
                           UtxoQueryTMVar (UtxoQueryTMVar), UtxoTxOutReport (UtxoTxOutReport), unUtxoIndex)
-import Marconi.Index.Utxo (UtxoIndex, UtxoRow (UtxoRow, _reference), toRows)
+import Marconi.Index.Utxo (UtxoIndex, UtxoRow (UtxoRow), toRows)
 import Marconi.Types (CardanoAddress, TxOutRef, TargetAddresses (..))
 import RewindableIndex.Index.VSqlite qualified as Ix
 import Data.Functor ((<&>))
@@ -67,19 +67,24 @@ findAll env = fromList <$> forConcurrently addresses f
 
 -- | Query utxos address address
 --
-utxoQuery:: DBConfig -> CApi.AddressAny -> IO (Set TxOutRef)
-utxoQuery dbConfig address = SQL.queryNamed (utxoConn dbConfig)
-                  "SELECT txid, inputIx FROM utxos WHERE utxos.address=:address"
+utxoQuery:: DBConfig -> CApi.AddressAny -> IO (Set UtxoRow)
+utxoQuery dbConfig address = do
+    utxoList <- SQL.queryNamed (utxoConn dbConfig)
+                  "SELECT address, utxos.txid, utxos.inputIx, datumHash, inlineDatum, value, refScript FROM utxos LEFT JOIN spent ON utxos.txId = spent.txId AND utxos.inputIx = spent.inputIx WHERE spent.txId IS NULL AND utxos.address=:address"
                   [":address" := address]
-                  >>= pure . fromList
+    print utxoList
+    pure $ fromList utxoList
 
 -- | Query utxos by Cardano Address
 --  To Cardano error may occure
 findByCardanoAddress
     :: DBQueryEnv           -- ^ Query run time environment
     -> CApi.AddressAny      -- ^ Cardano address to query
-    -> IO (Set TxOutRef)
-findByCardanoAddress env address = withQueryAction env  address utxoQuery
+    -> IO (Set UtxoRow)
+findByCardanoAddress env address = do
+    ut <- withQueryAction env  address utxoQuery
+    print ut
+    pure ut
 
 -- | Retrieve a Set of TxOutRefs associated with the given Cardano Era address
 -- We return an empty Set if no address is found
@@ -91,10 +96,10 @@ findByAddress env addressText =
     let
         f :: Either CApi.Bech32DecodeError CardanoAddress -> IO (Either QueryExceptions UtxoTxOutReport)
         f (Right address)
-            |isIndexed address  = 
+            |isIndexed address  =
                 -- allow for targetAddress search only
               ((pure . CApi.toAddressAny $ address)
-              >>= findByCardanoAddress env) 
+              >>= findByCardanoAddress env)
               <&>  (Right . UtxoTxOutReport addressText)
             | otherwise = pure . Left . AddressNotInListError . QueryError $
               unpack addressText <> " not in the provided target addresses"
@@ -113,26 +118,26 @@ findByAddress env addressText =
 queryInMemory
     :: CApi.AddressAny          -- ^ address to query
     -> UtxoIndex                -- ^ inmemory, hot-store, storage for utxos
-    -> IO ( Set TxOutRef )
-queryInMemory address ix =
+    -> IO ( Set UtxoRow )
+queryInMemory address ix = do
     let
         isTargetAddress :: UtxoRow -> Bool
-        isTargetAddress (UtxoRow a _ ) =  address == a
-    in
-        Ix.getBuffer (ix ^. Ix.storage)
-            >>=  pure
-                . fromList
-                . fmap _reference
+        isTargetAddress (UtxoRow a _ _ _ _ _) =  address == a
+    
+    memUtxos <- Ix.getBuffer (ix ^. Ix.storage) 
+    print $ "Mem utxos" ++ show memUtxos
+    
+    pure $ (fromList
                 . filter isTargetAddress
-                . concatMap toRows
+                . concatMap toRows) memUtxos
 
 -- | Execute the query function
 -- We must stop the utxo inserts before doing the query
 withQueryAction
     :: DBQueryEnv                                           -- ^ Query run time environment
     -> CApi.AddressAny                                      -- ^ Cardano address to query
-    -> (DBConfig -> CApi.AddressAny -> IO (Set TxOutRef) )  -- ^ Query function to run
-    -> IO (Set TxOutRef)
+    -> (DBConfig -> CApi.AddressAny -> IO (Set UtxoRow) )  -- ^ Query function to run
+    -> IO (Set UtxoRow)
 withQueryAction env address qAction =
     let
         utxoIndexer = unUtxoIndex  $ env ^. queryTMVar

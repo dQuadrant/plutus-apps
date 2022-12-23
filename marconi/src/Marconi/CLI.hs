@@ -12,6 +12,7 @@ module Marconi.CLI
     , utxoDbPath
     , datumDbPath
     , scriptTxDbPath
+    , parseCardanoAddresses
     ) where
 
 import Cardano.Api (ChainPoint, NetworkId)
@@ -88,13 +89,13 @@ targetAddressParser desc =  mconcat <$> some single
 --   where
 --     single = Opt.option (Opt.str >>= (pure . parseCardanoAddresses)) desc
 
--- parseCardanoAddresses :: String -> [CardanoAddress]
--- parseCardanoAddresses =  nub
---     . fromJustWithError
---     . traverse (deserializeToCardano . pack)
---     . words
---     where
---         deserializeToCardano = C.deserialiseFromBech32 (C.proxyToAsType Proxy)
+parseCardanoAddresses :: String -> [CardanoAddress]
+parseCardanoAddresses =  nub
+    . fromJustWithError
+    . traverse (deserializeToCardano . pack)
+    . words
+    where
+        deserializeToCardano = C.deserialiseFromBech32 (C.proxyToAsType Proxy)
 
 parseCardanoAddress :: String -> ReadM  TargetAddresses
 parseCardanoAddress = deserialiseToCardano

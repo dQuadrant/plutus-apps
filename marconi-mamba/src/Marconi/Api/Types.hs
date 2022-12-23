@@ -31,7 +31,7 @@ module Marconi.Api.Types
     , UtxoQueryTMVar (..)
     , QueryExceptions (..)
                          )  where
-import Cardano.Api (AddressAny, NetworkId, anyAddressInShelleyBasedEra)
+import Cardano.Api (AddressAny, NetworkId, anyAddressInShelleyBasedEra, ScriptData, scriptDataToJson, ScriptDataJsonSchema (ScriptDataJsonDetailedSchema))
 import Control.Exception (Exception)
 import Control.Lens (makeClassy)
 import Data.Aeson (ToJSON (toEncoding, toJSON), defaultOptions, genericToEncoding)
@@ -76,7 +76,7 @@ makeClassy ''JsonRpcEnv
 
 data UtxoTxOutReport = UtxoTxOutReport
     { bech32Address :: Text
-    , txOutRefs     :: Set TxOutRef
+    , txOutRefs     :: Set UtxoRow
     } deriving (Eq, Ord, Generic)
 
 instance ToJSON UtxoTxOutReport where
@@ -85,10 +85,13 @@ instance ToJSON UtxoTxOutReport where
 newtype UtxoRowWrapper = UtxoRowWrapper UtxoRow deriving Generic
 
 instance Ord UtxoRowWrapper where
-    compare (UtxoRowWrapper (UtxoRow a _) ) ( UtxoRowWrapper (UtxoRow b _)) =  compare a b
+    compare (UtxoRowWrapper (UtxoRow a1 t1 _ _ _ _) ) ( UtxoRowWrapper (UtxoRow a2 t2 _ _ _ _)) = case compare a1 a2 of
+        EQ -> compare t1 t2
+        x -> x
+
 
 instance Eq UtxoRowWrapper where
-    (UtxoRowWrapper  (UtxoRow a1 t1) ) == ( UtxoRowWrapper (UtxoRow a2 t2) ) = a1 == a2 &&  t1 == t2
+    (UtxoRowWrapper  (UtxoRow a1 t1 _ _ _ _) ) == ( UtxoRowWrapper (UtxoRow a2 t2 _ _ _ _) ) = a1 == a2 &&  t1 == t2
 
 instance ToJSON AddressAny where
   toJSON = toJSON . anyAddressInShelleyBasedEra @CurrentEra
@@ -96,8 +99,9 @@ instance ToJSON AddressAny where
 instance ToJSON UtxoRowWrapper where
     toEncoding = genericToEncoding defaultOptions
 
-instance ToJSON UtxoRow where
-    toEncoding = genericToEncoding defaultOptions
+instance ToJSON ScriptData where
+  toJSON = scriptDataToJson ScriptDataJsonDetailedSchema
+
 
 data QueryExceptions
     = AddressNotInListError QueryExceptions

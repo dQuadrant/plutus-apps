@@ -18,7 +18,10 @@ module RewindableIndex.Index.VSplit
   , Storage(..)
   , getBuffer
   , getEvents
+  , showStorageInfo
+  , showSplitIndexInfo
   , k
+  ,getFullBuffer
   ) where
 
 import Control.Lens ((%~), (&), (.~), (^.))
@@ -29,6 +32,7 @@ import Data.Vector qualified as V
 import Data.Vector.Generic qualified as VG
 import Data.Vector.Generic.Mutable qualified as VGM
 import Data.Vector.Unboxed qualified as VU
+import Debug.Trace as Debug ( traceM )
 
 data Storage v m e = Storage
   { _events :: (VG.Mutable v) (PrimState m) e
@@ -36,8 +40,14 @@ data Storage v m e = Storage
   , _eSize  :: Int
   , _bSize  :: Int
   , _k      :: Int
-  }
+  } 
+  --container size ( already fixed)
+  -- cursor position (same as begining position)
+  -- validData size. ( content length )
 $(Lens.makeLenses ''Storage)
+
+
+showStorageInfo (Storage  _ c es bs k) = "Storage(" ++ "cusor=" ++ show c ++ ",eSize=" ++ show es ++",bSize=" ++ show bs ++ ",k="++ show k
 
 maxSize
   :: VGM.MVector (VG.Mutable v) e
@@ -62,6 +72,15 @@ getBuffer store =
   let bufferEnd   = store ^. cursor - store ^. eSize
       bufferStart = bufferEnd - store ^. bSize
   in  reverse <$> getInterval bufferStart (store ^. bSize) store
+
+getFullBuffer 
+  :: forall v m e.
+     VGM.MVector (VG.Mutable v) e
+  => PrimMonad m
+  => Show e
+  => Storage v m e
+  -> m [e]
+getFullBuffer store =  reverse <$> getInterval 0 (VGM.length $ store ^. events) store
 
 getEvents
   :: forall v m e.
@@ -103,11 +122,16 @@ data SplitIndex m h v e n q r = SplitIndex
   { _handle        :: h
   , _storage       :: Storage v m e
   , _notifications :: [n]
+   -- call store to save to persistant device after memory is full
   , _store         :: SplitIndex m h v e n q r -> m ()
+   -- query form ersistant store.
   , _query         :: SplitIndex m h v e n q r -> q -> [e] -> m r
+   -- handler to call just before insert
   , _onInsert      :: SplitIndex m h v e n q r -> e -> m [n]
   }
 $(Lens.makeLenses ''SplitIndex)
+
+showSplitIndexInfo ( SplitIndex h s n _s _q _o)= "SplitIndex(notificationSize=" ++ show (length n) ++ ",storage="  ++ showStorageInfo s
 
 new
   :: Monad m
@@ -185,6 +209,7 @@ insert
   -> SplitIndex m h v e n q r
   -> m (SplitIndex m h v e n q r)
 insert e ix = do
+    Debug.traceM $ showSplitIndexInfo ix
     let es = ix ^. storage . events
         c  = ix ^. storage . cursor
         vs = VGM.length es
@@ -194,8 +219,8 @@ insert e ix = do
               (storage . cursor) %~ (\c' -> (c' + 1) `rem` vs) $
               notifications      %~ (ns++)                     $ ix
     if isStorageFull (ix' ^. storage)
-    then storeEvents ix'
-    else pure        ix'
+      then storeEvents ix'
+      else pure        ix'
 
   where
     updateSizes :: Storage v m e -> Storage v m e

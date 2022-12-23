@@ -36,6 +36,7 @@ import System.IO (openFile, IOMode (WriteMode))
 import qualified Data.ByteString as BS
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy.Char8 as BSL
+import qualified RewindableIndex.Index.VSplit as Ix
 
 -- | Bootstraps the utxo query environment.
 -- The module is responsible for accessing SQLite for quries.
@@ -128,7 +129,7 @@ queryInMemory address ix = do
         isTargetAddress :: UtxoRow -> Bool
         isTargetAddress (UtxoRow a _ _ _ _ _) =  address == a
 
-    memUtxos <- Ix.getBuffer (ix ^. Ix.storage)
+    memUtxos <- Ix.getFullBuffer (ix ^. Ix.storage)
     BSL.writeFile "/tmp/mem.json" (A.encode memUtxos)
     let res= (fromList
                 . filter isTargetAddress

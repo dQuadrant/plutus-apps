@@ -58,6 +58,7 @@ import Marconi.Types (CurrentEra, TxOut, TxOutRef, txOutRef)
 import RewindableIndex.Index.VSqlite (SqliteIndex)
 import RewindableIndex.Index.VSqlite qualified as Ix
 import System.Random.MWC (createSystemRandom, uniformR)
+import qualified Data.Aeson as A
 
 data UtxoUpdate = UtxoUpdate
   { _inputs  :: !(Set TxIn),
@@ -65,6 +66,14 @@ data UtxoUpdate = UtxoUpdate
     _slotNo  :: !SlotNo
   }
   deriving (Show)
+
+instance ToJSON UtxoUpdate where
+   toJSON (UtxoUpdate inputs outputs slot) = A.object [
+        "inputs" .= inputs,
+        "outputs" .= map fst outputs,
+        "slot"  .= slot
+      ]
+
 
 $(makeLenses ''UtxoUpdate)
 

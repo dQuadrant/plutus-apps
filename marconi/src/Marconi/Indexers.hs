@@ -8,9 +8,9 @@
 
 module Marconi.Indexers where
 
-import Control.Concurrent (forkIO)
+import Control.Concurrent (forkIO, swapMVar)
 import Control.Concurrent.QSemN (QSemN, newQSemN, signalQSemN, waitQSemN)
-import Control.Concurrent.STM (atomically)
+import Control.Concurrent.STM (atomically, takeTMVar, swapTMVar)
 import Control.Concurrent.STM.TChan (TChan, dupTChan, newBroadcastTChanIO, readTChan, writeTChan)
 import Control.Lens.Combinators (imap)
 import Control.Lens.Operators ((&), (^.))
@@ -171,27 +171,35 @@ queryAwareUtxoWorker
     :: UtxoQueryTMVar   -- ^  used to communicate with query threads
     -> TargetAddresses  -- ^ Target addresses to filter for
     -> Worker
-queryAwareUtxoWorker (UtxoQueryTMVar utxoIndexer) targetAddresses Coordinator{_barrier} ch path =
-   Utxo.open path (Utxo.Depth 2160) >>= bootstrapQuery >>= innerLoop
+queryAwareUtxoWorker (UtxoQueryTMVar utxoIndexer) targetAddresses Coordinator{_barrier} ch path =do 
+    index <- Utxo.open path (Utxo.Depth 2160) 
+    uptateMvar  index 
+    innerLoop index
+   
   where
-    bootstrapQuery :: UtxoIndex -> IO UtxoIndex
-    bootstrapQuery index = (atomically $ putTMVar utxoIndexer index ) >> pure index
+    uptateMvar :: UtxoIndex -> IO ()
+    uptateMvar index = atomically $ putTMVar utxoIndexer index
     innerLoop :: UtxoIndex -> IO ()
     innerLoop index = do
         signalQSemN _barrier 1
         event <- atomically $ readTChan ch
         case event of
             RollForward (BlockInMode (Block (BlockHeader slotNo _ no) txs) _) _ct -> do
-
                 let utxoRow = getUtxoUpdate slotNo txs targetAddresses
-                Ix.insert utxoRow index >>= innerLoop
+                putStrLn $ "Roll forward Slot" ++ show slotNo
+                updatedIndex <- Ix.insert utxoRow index 
+                _ <- atomically $ swapTMVar  utxoIndexer  updatedIndex
+                innerLoop updatedIndex
             RollBackward cp _ct -> do
+                putStrLn $ "Roll backward Slot" ++ show cp ++ ", "  ++ show _ct
                 events <- Ix.getEvents (index ^. Ix.storage)
-                innerLoop $
-                    fromMaybe index $ do
+                let v =fromMaybe index  (do
                         slot   <- chainPointToSlotNo cp
                         offset <- findIndex  (\u -> (u ^. Utxo.slotNo) < slot) events
-                        Ix.rewind offset index
+                        Ix.rewind offset index)
+                _ <- atomically $ swapTMVar  utxoIndexer  v   
+                innerLoop v
+
 
 
 utxoWorker ::  TargetAddresses -> Worker

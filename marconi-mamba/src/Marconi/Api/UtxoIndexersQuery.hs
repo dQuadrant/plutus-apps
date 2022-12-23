@@ -30,6 +30,12 @@ import Marconi.Api.Types (DBConfig (DBConfig, utxoConn),
 import Marconi.Index.Utxo (UtxoIndex, UtxoRow (UtxoRow), toRows)
 import Marconi.Types (CardanoAddress, TargetAddresses (..), TxOutRef)
 import RewindableIndex.Index.VSqlite qualified as Ix
+import Cardano.Api (prettyPrintJSON)
+import qualified Data.ByteString.Char8 as BS8
+import System.IO (openFile, IOMode (WriteMode))
+import qualified Data.ByteString as BS
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy.Char8 as BSL
 
 -- | Bootstraps the utxo query environment.
 -- The module is responsible for accessing SQLite for quries.
@@ -72,7 +78,6 @@ utxoQuery dbConfig address = do
     utxoList <- SQL.queryNamed (utxoConn dbConfig)
                   "SELECT address, utxos.txid, utxos.inputIx, datumHash, inlineDatum, value, refScript FROM utxos LEFT JOIN spent ON utxos.txId = spent.txId AND utxos.inputIx = spent.inputIx WHERE spent.txId IS NULL AND utxos.address=:address"
                   [":address" := address]
-    print utxoList
     pure $ fromList utxoList
 
 -- | Query utxos by Cardano Address
@@ -82,9 +87,8 @@ findByCardanoAddress
     -> CApi.AddressAny      -- ^ Cardano address to query
     -> IO (Set UtxoRow)
 findByCardanoAddress env address = do
-    ut <- withQueryAction env  address utxoQuery
-    print ut
-    pure ut
+    
+    withQueryAction env  address utxoQuery
 
 -- | Retrieve a Set of TxOutRefs associated with the given Cardano Era address
 -- We return an empty Set if no address is found
@@ -125,12 +129,12 @@ queryInMemory address ix = do
         isTargetAddress (UtxoRow a _ _ _ _ _) =  address == a
 
     memUtxos <- Ix.getBuffer (ix ^. Ix.storage)
-    print $ "Mem utxos" ++ show memUtxos
-
-    pure $ (fromList
+    BSL.writeFile "/tmp/mem.json" (A.encode memUtxos)
+    let res= (fromList
                 . filter isTargetAddress
                 . concatMap toRows) memUtxos
-
+    putStrLn $ "MemUtxos: " ++ show (length memUtxos) ++ "\nUserMemUtxos:" ++ (BS8.unpack $ prettyPrintJSON res)
+    pure res
 -- | Execute the query function
 -- We must stop the utxo inserts before doing the query
 withQueryAction

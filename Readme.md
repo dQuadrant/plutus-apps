@@ -1,8 +1,8 @@
-## Cardano-Rpc 
+## Cardano-Rpc Feature Reference implementation
 
 
 
-### 1. Updated cardano-cli 
+###1  . Updated cardano-cli 
 https://github.com/dquadrant/cardano-node
 
 - Adds `cardano-cli rpc `  subcommand
@@ -16,12 +16,12 @@ https://github.com/dquadrant/plutus-apps
 
 ### 3. Testing the current non-production version
 
--3.1 Start cardano-node and set the socket path environment variable.
+- 3.1 Start cardano-node and set the socket path environment variable.
 ```
    export CARDANO_NODE_SOCKET_PATH=/home/user/.cardano/preprod/node.socket
 ```
 
--3.2 Start marconi-mamba service
+- 3.2 Start marconi-mamba service
 ```
     git clone https://github.com/dquadrant/plutus-apps
     cd plutus-apps
@@ -31,7 +31,7 @@ https://github.com/dquadrant/plutus-apps
     cabal run exe:marconi-mamba  -- --socket-path $CARDANO_NODE_SOCKET_PATH --testnet-magic 1 --addresses-to-index '*' --utxo-db ./.data --http-port 3345  
 ```
 
--3.3 Try out cardano-cli rpc commands
+- 3.3 Try out cardano-cli rpc commands
 ```
     git clone https://github.com/dquadrant/cardano-node
     cd cardano-node
@@ -53,7 +53,7 @@ https://github.com/dquadrant/plutus-apps
 
 
 Future implementation can add following rpcs, but it's not limited to it.
-# query (including historical data)
+#### query (including historical data)
 - ada_getBlock (blockHash)
 - ada_getTransaction (txid ,includemempool=true,false)
 - ada_getTxout (txhash, index, includemempool=true,false)
@@ -61,7 +61,7 @@ Future implementation can add following rpcs, but it's not limited to it.
 - ada_getData (datumHash)
 
 
-# query current state
+#### query current state
 - ada_getTip
 - ada_getProtocolParams
 - ada_getEraHistory
@@ -70,7 +70,7 @@ Future implementation can add following rpcs, but it's not limited to it.
 - ada_getBalance (maybe spend credential, maybe stake credential,minConfirmation = n) where (0>n>=100) (n=0) means to  include mempoolTxToo
 
 
-## pools and delegation
+#### pools and delegation
 - ada_getPools
 - ada_getPool (id)
 - ada_getDelegation (stakeAddr)
@@ -78,7 +78,7 @@ Future implementation can add following rpcs, but it's not limited to it.
 - ada_getDelegations (PoolId)
 
 
-## events
+#### events
 - ada_subscribeDelegation (stakeAddr or poolId)
 - ada_subscribeTransfer	(maybe spend credential,maybe stake credential)
 - ada_subscribeBlock (start,end)

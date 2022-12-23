@@ -31,7 +31,8 @@ module Marconi.Api.Types
     , UtxoQueryTMVar (..)
     , QueryExceptions (..)
                          )  where
-import Cardano.Api (AddressAny, NetworkId, anyAddressInShelleyBasedEra, ScriptData, scriptDataToJson, ScriptDataJsonSchema (ScriptDataJsonDetailedSchema))
+import Cardano.Api (AddressAny, NetworkId, ScriptData, ScriptDataJsonSchema (ScriptDataJsonDetailedSchema),
+                    anyAddressInShelleyBasedEra, scriptDataToJson)
 import Control.Exception (Exception)
 import Control.Lens (makeClassy)
 import Data.Aeson (ToJSON (toEncoding, toJSON), defaultOptions, genericToEncoding)
@@ -87,7 +88,7 @@ newtype UtxoRowWrapper = UtxoRowWrapper UtxoRow deriving Generic
 instance Ord UtxoRowWrapper where
     compare (UtxoRowWrapper (UtxoRow a1 t1 _ _ _ _) ) ( UtxoRowWrapper (UtxoRow a2 t2 _ _ _ _)) = case compare a1 a2 of
         EQ -> compare t1 t2
-        x -> x
+        x  -> x
 
 
 instance Eq UtxoRowWrapper where

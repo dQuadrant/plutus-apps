@@ -2,16 +2,16 @@ module Marconi.Rpc.Types
 
 where
 
-import qualified Data.Text as T
-import Data.Aeson ( FromJSON(parseJSON), (.:), (.:?), toJSON, object, (.=) )
-import qualified Data.Aeson as A
+import Data.Aeson (FromJSON (parseJSON), object, toJSON, (.:), (.:?), (.=))
+import Data.Aeson qualified as A
 import Data.Aeson.Types (ToJSON)
+import Data.Text qualified as T
 
 data RpcRequest = RpcRequest {
-    rpcReqVersion   :: T.Text,
-    rpcReqId        :: RpcId,
-    rpcMethod       :: String,
-    rpcParams       :: [T.Text]
+    rpcReqVersion :: T.Text,
+    rpcReqId      :: RpcId,
+    rpcMethod     :: String,
+    rpcParams     :: [T.Text]
 }
 
 instance FromJSON RpcRequest where
@@ -29,14 +29,14 @@ data RpcId = RpcIdNumber Integer
 
 instance FromJSON RpcId where
   parseJSON (A.Number  n) =  pure $ RpcIdNumber $ round n
-  parseJSON (A.String t) = pure $ RpcIdString t
-  parseJSON A.Null     = pure RpcIdNull
-  parseJSON  _           = fail "Not integer or string or null"
+  parseJSON (A.String t)  = pure $ RpcIdString t
+  parseJSON A.Null        = pure RpcIdNull
+  parseJSON  _            = fail "Not integer or string or null"
 
 instance ToJSON  RpcId where
-    toJSON (RpcIdNumber n) = toJSON n
+    toJSON (RpcIdNumber n)   = toJSON n
     toJSON (RpcIdString txt) = toJSON txt
-    toJSON RpcIdNull = A.Null
+    toJSON RpcIdNull         = A.Null
 
 
 data RpcError = RpcError {
@@ -55,13 +55,13 @@ instance ToJSON  RpcError where
 
 data RpcResponse  = RpcErrorResponse{
         rpcVersion :: T.Text
-      , rpcId :: RpcId
-      , rpcError :: RpcError
+      , rpcId      :: RpcId
+      , rpcError   :: RpcError
     } |
     RpcSuccessResponse {
           rpcVersion :: T.Text
-      , rpcId :: RpcId
-      , rpcResult :: A.Value
+      , rpcId        :: RpcId
+      , rpcResult    :: A.Value
     }
 
 instance FromJSON RpcResponse where

@@ -37,7 +37,7 @@ import Marconi.Index.Datum qualified as Datum
 import Marconi.Index.ScriptTx qualified as ScriptTx
 import Marconi.Index.Utxo (TxOut, UtxoIndex, UtxoUpdate (UtxoUpdate, _inputs, _outputs, _slotNo))
 import Marconi.Index.Utxo qualified as Utxo
-import Marconi.Types (TargetAddresses (..), TxOutRef, pattern CurrentEra, txOutRef, AddressList)
+import Marconi.Types (AddressList, TargetAddresses (..), TxOutRef, pattern CurrentEra, txOutRef)
 
 import RewindableIndex.Index.VSplit qualified as Ix
 import RewindableIndex.Storable qualified as Storable
@@ -76,8 +76,8 @@ getOutputs
 getOutputs maybeTargetAddresses (C.Tx txBody@(C.TxBody C.TxBodyContent{C.txOuts}) _) =
     do
         let indexersFilter =case maybeTargetAddresses of
-              TargetAllAddresses -> id
-              NoTargetAddresses -> id
+              TargetAllAddresses      -> id
+              NoTargetAddresses       -> id
               TargetAddresses targets ->  filter (isInTargetTxOut targets)
                 -- Just targetAddresses ->
                 -- _                    -> id -- no filtering is applied
@@ -182,7 +182,7 @@ queryAwareUtxoWorker (UtxoQueryTMVar utxoIndexer) targetAddresses Coordinator{_b
         event <- atomically $ readTChan ch
         case event of
             RollForward (BlockInMode (Block (BlockHeader slotNo _ no) txs) _) _ct -> do
-                
+
                 let utxoRow = getUtxoUpdate slotNo txs targetAddresses
                 Ix.insert utxoRow index >>= innerLoop
             RollBackward cp _ct -> do

@@ -16,10 +16,10 @@ import Marconi.Api.Types (CliArgs (CliArgs), HasDBQueryEnv (queryTMVar), HasJson
                           JsonRpcEnv (JsonRpcEnv, _HttpSettings, _QueryEnv), RpcPortNumber, TargetAddresses)
 import Marconi.Api.UtxoIndexersQuery qualified as QIUtxo
 import Marconi.Indexers (combineIndexers, queryAwareUtxoWorker)
+import Marconi.Logging (logging)
 import Network.Wai.Handler.Warp (defaultSettings, setPort)
 import Prettyprinter (defaultLayoutOptions, layoutPretty, pretty, (<+>))
 import Prettyprinter.Render.Text (renderStrict)
-import Marconi.Logging (logging)
 
 
 -- | Bootstraps the JSON-RPC  http server with appropriate settings and marconi cache
@@ -34,7 +34,7 @@ bootstrapJsonRpc dbPath maybePort targetAddresses nId = do
 
     queryenv <- QIUtxo.bootstrap dbPath targetAddresses nId
     let httpsettings =  maybe defaultSettings (flip setPort defaultSettings ) (case maybePort of
-          Nothing ->  Just 3345
+          Nothing   ->  Just 3345
           Just port -> Just port )
     pure $ JsonRpcEnv
         { _HttpSettings = httpsettings
@@ -54,7 +54,7 @@ bootstrapUtxoIndexers
 bootstrapUtxoIndexers (CliArgs socket dbPath _ networkId targetAddresses) env =
     do
         let qsem = env ^. queryEnv . queryTMVar
-            indexers = combineIndexers [( queryAwareUtxoWorker qsem targetAddresses , dbPath)] 
+            indexers = combineIndexers [( queryAwareUtxoWorker qsem targetAddresses , dbPath)]
             chainPoint = ChainPointAtGenesis
         c <- defaultConfigStdout
         withTrace c "marconi-mamba" $ \trace ->

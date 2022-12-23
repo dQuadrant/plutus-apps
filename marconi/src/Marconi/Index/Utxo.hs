@@ -1,11 +1,11 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveGeneric      #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE GADTs              #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE PatternSynonyms    #-}
+{-# LANGUAGE TemplateHaskell    #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Marconi.Index.Utxo
@@ -26,20 +26,10 @@ module Marconi.Index.Utxo
   )
 where
 
-import Cardano.Api
-  ( Hash,
-    ScriptData,
-    ScriptDataJsonSchema (ScriptDataJsonDetailedSchema),
-    ScriptInAnyLang,
-    SerialiseAddress (serialiseAddress),
-    SlotNo,
-    TxIn (TxIn),
-    TxOutDatum (TxOutDatumHash, TxOutDatumInline),
-    TxOutValue (TxOutAdaOnly, TxOutValue),
-    Value,
-    lovelaceToValue,
-    serialiseToRawBytesHexText,
-  )
+import Cardano.Api (Hash, ScriptData, ScriptDataJsonSchema (ScriptDataJsonDetailedSchema), ScriptInAnyLang,
+                    SerialiseAddress (serialiseAddress), SlotNo, TxIn (TxIn),
+                    TxOutDatum (TxOutDatumHash, TxOutDatumInline), TxOutValue (TxOutAdaOnly, TxOutValue), Value,
+                    lovelaceToValue, serialiseToRawBytesHexText)
 import Cardano.Api qualified as C
 import Cardano.Api.Shelley (ReferenceScript (ReferenceScript, ReferenceScriptNone))
 import Control.Exception (SomeException (SomeException), throwIO, try)
@@ -56,7 +46,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text
-import Database.SQLite.Simple (Error (ErrorConstraint), Only (Only), SQLData (SQLBlob, SQLInteger, SQLText), SQLError (SQLError))
+import Database.SQLite.Simple (Error (ErrorConstraint), Only (Only), SQLData (SQLBlob, SQLInteger, SQLText),
+                               SQLError (SQLError))
 import Database.SQLite.Simple qualified as SQL
 import Database.SQLite.Simple.FromField (FromField (fromField), ResultError (ConversionFailed), returnError)
 import Database.SQLite.Simple.FromRow (FromRow (fromRow), field)
@@ -69,9 +60,9 @@ import RewindableIndex.Index.VSqlite qualified as Ix
 import System.Random.MWC (createSystemRandom, uniformR)
 
 data UtxoUpdate = UtxoUpdate
-  { _inputs :: !(Set TxIn),
+  { _inputs  :: !(Set TxIn),
     _outputs :: ![(TxOut, TxOutRef)],
-    _slotNo :: !SlotNo
+    _slotNo  :: !SlotNo
   }
   deriving (Show)
 
@@ -99,7 +90,7 @@ instance FromField C.TxId where
     f' <- fromField f
     let val = Text.encodeUtf8 f'
     case C.deserialiseFromRawBytesHex (C.proxyToAsType Proxy) val of
-      Left _ -> returnError ConversionFailed f "Cannot deserialise TxId."
+      Left _      -> returnError ConversionFailed f "Cannot deserialise TxId."
       Right txId' -> pure txId'
 
 instance ToField C.TxId where
@@ -112,12 +103,12 @@ instance ToField C.TxIx where
   toField (C.TxIx i) = SQLInteger $ fromIntegral i
 
 data UtxoRow = UtxoRow
-  { _address :: !C.AddressAny,
-    _outRef :: !TxOutRef,
-    _datHash :: !(Maybe (Hash ScriptData)),
+  { _address     :: !C.AddressAny,
+    _outRef      :: !TxOutRef,
+    _datHash     :: !(Maybe (Hash ScriptData)),
     _inlineDatum :: !(Maybe ScriptData),
-    _val :: !Value,
-    _refScript :: !(Maybe ScriptInAnyLang)
+    _val         :: !Value,
+    _refScript   :: !(Maybe ScriptInAnyLang)
   }
   deriving (Generic, Show)
 
@@ -127,7 +118,7 @@ instance Eq UtxoRow where
 instance Ord UtxoRow where
   compare (UtxoRow a1 t1 _ _ _ _) (UtxoRow a2 t2 _ _ _ _) = case compare a1 a2 of
     EQ -> compare t1 t2
-    x -> x
+    x  -> x
 
 instance ToJSON UtxoRow where
   toJSON (UtxoRow _ outRef datHash inlineDat val refScript) =
@@ -136,9 +127,9 @@ instance ToJSON UtxoRow where
         "value" .= val,
         "datum"
           .= ( case (inlineDat, datHash) of
-                 (Nothing, Nothing) -> Aeson.Null
+                 (Nothing, Nothing)       -> Aeson.Null
                  (Nothing, Just datHash') -> toJSON datHash'
-                 (Just sd, _) -> C.scriptDataToJson ScriptDataJsonDetailedSchema sd
+                 (Just sd, _)             -> C.scriptDataToJson ScriptDataJsonDetailedSchema sd
              ),
         "referenceScript" .= refScript
       ]
@@ -188,7 +179,7 @@ instance FromField ScriptData where
           pure
           . Aeson.decode
     case C.scriptDataFromJson ScriptDataJsonDetailedSchema val' of
-      Left _ -> returnError ConversionFailed f "Cannot deserialise inline datum."
+      Left _   -> returnError ConversionFailed f "Cannot deserialise inline datum."
       Right dt -> pure dt
 
 instance ToField ScriptData where
@@ -198,7 +189,7 @@ instance FromField Value where
   fromField f = do
     bs <- fromField f
     case Aeson.decode bs :: Maybe Value of
-      Nothing -> returnError ConversionFailed f "Cannot deserialise datum hash."
+      Nothing   -> returnError ConversionFailed f "Cannot deserialise datum hash."
       Just val' -> pure val'
 
 instance ToField Value where
@@ -208,7 +199,7 @@ instance FromField ScriptInAnyLang where
   fromField f = do
     bs <- fromField f
     case Aeson.decode bs :: Maybe ScriptInAnyLang of
-      Nothing -> returnError ConversionFailed f "Cannot deserialise datum hash."
+      Nothing   -> returnError ConversionFailed f "Cannot deserialise datum hash."
       Just val' -> pure val'
 
 instance ToField ScriptInAnyLang where
@@ -259,7 +250,7 @@ store ix = do
   let utxos = concatMap toRows buffer
       spent = concatMap (toList . _inputs) buffer
       c = ix ^. Ix.handle
-      
+
   -- Try inserting if UNIQUE constraint fails then ignore as that utxo is already there otherwise continue
   result <- try (performInsert c utxos spent) :: IO (Either SQLError ())
   case result of
@@ -296,21 +287,21 @@ toRows update =
               _outRef = outRef',
               _datHash = case datum of
                 TxOutDatumHash _ dh -> Just dh
-                _ -> Nothing,
+                _                   -> Nothing,
               _inlineDatum = case datum of
                 TxOutDatumInline _ inDat -> Just inDat
-                _ -> Nothing,
+                _                        -> Nothing,
               _val = case val' of
                 TxOutAdaOnly _ lov -> lovelaceToValue lov
                 TxOutValue _ val'' -> val'',
               _refScript = case refScript' of
                 ReferenceScript _ sial -> Just sial
-                ReferenceScriptNone -> Nothing
+                ReferenceScriptNone    -> Nothing
             }
       )
   where
     toAddr :: C.AddressInEra CurrentEra -> C.AddressAny
-    toAddr (C.AddressInEra C.ByronAddressInAnyEra addr) = C.AddressByron addr
+    toAddr (C.AddressInEra C.ByronAddressInAnyEra addr)    = C.AddressByron addr
     toAddr (C.AddressInEra (C.ShelleyAddressInEra _) addr) = C.AddressShelley addr
 
 onlyAt :: C.AddressAny -> UtxoRow -> Bool

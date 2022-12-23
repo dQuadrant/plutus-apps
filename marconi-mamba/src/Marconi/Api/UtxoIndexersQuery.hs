@@ -16,6 +16,7 @@ import Control.Concurrent.STM.TMVar (TMVar, newEmptyTMVar, putTMVar, takeTMVar)
 import Control.Exception (bracket)
 import Control.Lens ((^.))
 import Control.Monad.STM (STM)
+import Data.Functor ((<&>))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set (Set, fromList, toList, union)
 import Data.Text (Text, intercalate, unpack)
@@ -27,9 +28,8 @@ import Marconi.Api.Types (DBConfig (DBConfig, utxoConn),
                           QueryExceptions (AddressNotInListError, QueryError), TargetAddresses,
                           UtxoQueryTMVar (UtxoQueryTMVar), UtxoTxOutReport (UtxoTxOutReport), unUtxoIndex)
 import Marconi.Index.Utxo (UtxoIndex, UtxoRow (UtxoRow), toRows)
-import Marconi.Types (CardanoAddress, TxOutRef, TargetAddresses (..))
+import Marconi.Types (CardanoAddress, TargetAddresses (..), TxOutRef)
 import RewindableIndex.Index.VSqlite qualified as Ix
-import Data.Functor ((<&>))
 
 -- | Bootstraps the utxo query environment.
 -- The module is responsible for accessing SQLite for quries.
@@ -59,7 +59,7 @@ findAll env = fromList <$> forConcurrently addresses f
     where
         addresses = case env ^. queryAddresses of
           TargetAllAddresses -> [] -- targetting by all address for query is not supported
-          NoTargetAddresses -> []
+          NoTargetAddresses  -> []
           TargetAddresses ne -> NonEmpty.toList ne
 
         f  :: CardanoAddress -> IO UtxoTxOutReport
@@ -108,7 +108,7 @@ findByAddress env addressText =
                      <> show e)
         isIndexed addr = (case env ^. queryAddresses of
                         TargetAllAddresses -> True
-                        NoTargetAddresses -> False
+                        NoTargetAddresses  -> False
                         TargetAddresses ne -> addr `elem` ne )
     in
         f $ CApi.deserialiseFromBech32 CApi.AsShelleyAddress addressText
@@ -123,10 +123,10 @@ queryInMemory address ix = do
     let
         isTargetAddress :: UtxoRow -> Bool
         isTargetAddress (UtxoRow a _ _ _ _ _) =  address == a
-    
-    memUtxos <- Ix.getBuffer (ix ^. Ix.storage) 
+
+    memUtxos <- Ix.getBuffer (ix ^. Ix.storage)
     print $ "Mem utxos" ++ show memUtxos
-    
+
     pure $ (fromList
                 . filter isTargetAddress
                 . concatMap toRows) memUtxos
@@ -162,7 +162,7 @@ reportQueryAddresses env
     . fromList
     $ (case env ^. queryAddresses of
                 TargetAllAddresses -> []
-                NoTargetAddresses -> []
+                NoTargetAddresses  -> []
                 TargetAddresses ne -> NonEmpty.toList  ne)
 
 reportQueryCardanoAddresses
@@ -178,5 +178,5 @@ reportBech32Addresses env
     . fmap CApi.serialiseAddress
     $ (case env ^. queryAddresses of
             TargetAllAddresses -> []
-            NoTargetAddresses -> []
+            NoTargetAddresses  -> []
             TargetAddresses ne -> NonEmpty.toList ne)

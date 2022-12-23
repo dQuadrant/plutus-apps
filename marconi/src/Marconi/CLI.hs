@@ -17,19 +17,19 @@ module Marconi.CLI
 
 import Cardano.Api (ChainPoint, NetworkId)
 import Cardano.Api qualified as C
+import Control.Applicative (Alternative (some), (<|>))
 import Data.ByteString.Char8 qualified as C8
+import Data.Functor ((<&>))
 import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Proxy (Proxy (Proxy))
 import Data.Text (pack)
-import Marconi.Types (CardanoAddress, TargetAddresses (TargetAllAddresses, NoTargetAddresses, TargetAddresses))
-import Options.Applicative qualified as Opt
-import System.FilePath ((</>))
-import Data.Functor ((<&>))
-import Control.Applicative (Alternative(some), (<|>))
+import Debug.Trace qualified as Debug
+import Marconi.Types (CardanoAddress, TargetAddresses (NoTargetAddresses, TargetAddresses, TargetAllAddresses))
 import Options.Applicative (optional)
-import qualified Debug.Trace as Debug
+import Options.Applicative qualified as Opt
 import Options.Applicative.Types (ReadM)
+import System.FilePath ((</>))
 
 chainPointParser :: Opt.Parser C.ChainPoint
 chainPointParser =
@@ -103,7 +103,7 @@ parseCardanoAddress = deserialiseToCardano
       deserialiseToCardano "*" = pure  TargetAllAddresses
       deserialiseToCardano   v = case  C.deserialiseFromBech32 (C.proxyToAsType Proxy) (pack  v) of
           Right addr ->  pure $ TargetAddresses (addr :| [])
-          Left _  -> fail $ "Invalid address \"" ++ v++"\""
+          Left _     -> fail $ "Invalid address \"" ++ v++"\""
 
 
 -- | This executable is meant to exercise a set of indexers (for now datumhash -> datum)

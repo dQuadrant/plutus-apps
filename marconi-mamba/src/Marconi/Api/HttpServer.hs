@@ -22,10 +22,10 @@ import Marconi.Api.Types (DBQueryEnv, HasJsonRpcEnv (httpSettings, queryEnv), Js
 import Marconi.Api.UtxoIndexersQuery qualified as Q.Utxo (findAll, findByAddress, reportBech32Addresses)
 import Marconi.JsonRpc.Types (JsonRpcErr (JsonRpcErr, errorCode, errorData, errorMessage), parseErrorCode)
 import Marconi.Server.Types ()
+import Marconi.SimpleRpc (simpleRpcServer)
 import Network.Wai.Handler.Warp (runSettings)
 import Servant.API (NoContent (NoContent), (:<|>) ((:<|>)))
 import Servant.Server (Handler, Server, serve)
-import Marconi.SimpleRpc (simpleRpcServer)
 
 -- | bootstraps the he http server
 bootstrap :: JsonRpcEnv -> IO ()

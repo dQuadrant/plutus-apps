@@ -10,7 +10,7 @@ Changelog:
 - Adds `cardano-cli rpc `  subcommand
 
 ### 2. Updated `marconi-mamba`
-Repo: https://github.com/dquadrant/plutus-apps
+Repo: https://github.com/dquadrant/plutus-apps \
 Branch: `feature/rpc`
  
 Changelog:
@@ -49,7 +49,7 @@ Changelog:
 ```
 
 ### 4. Using `marconi` and `marconi-mamba`
- While working with marconi and marconi-mamba, we found these packages are not properly documented yet. Further, we discovered some bugs which we had to fix before we could using it. In our opinion, these projects need further polishing and refactoring to make the integration with backends other than sqlite easier.
+ While working with marconi and marconi-mamba, we found these packages are not properly documented yet. Further, we discovered some bugs which we had to fix before we could start using it. In our opinion, these projects need further polishing and refactoring to make the integration with backends other than sqlite easier for developers.
 
 ### 5. Full implementation
  Based on our experience, we consider that json-rpc is versatile and adding more features/methods to it is easy.

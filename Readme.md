@@ -1,15 +1,19 @@
-## Cardano-Rpc Feature Reference implementation
+## Cardano-RPC Feature Reference implementation
 
 
 
-###1  . Updated cardano-cli 
-https://github.com/dquadrant/cardano-node
+### 1. Updated `cardano-cli`
+Repo: https://github.com/dquadrant/cardano-node \
+Branch: `feature/rpc`
 
+Changelog: 
 - Adds `cardano-cli rpc `  subcommand
 
-### 2. Updated marconi-mamba
-https://github.com/dquadrant/plutus-apps
+### 2. Updated `marconi-mamba`
+Repo: https://github.com/dquadrant/plutus-apps
+Branch: `feature/rpc`
  
+Changelog:
  - Fixes existing issues in marconi-mamba inmemory querying
  - Adds simpler implementation of json-rpc server.
 
@@ -31,7 +35,7 @@ https://github.com/dquadrant/plutus-apps
     cabal run exe:marconi-mamba  -- --socket-path $CARDANO_NODE_SOCKET_PATH --testnet-magic 1 --addresses-to-index '*' --utxo-db ./.data --http-port 3345  
 ```
 
-- 3.3 Try out cardano-cli rpc commands
+- 3.3 Try out `cardano-cli rpc` commands
 ```
     git clone https://github.com/dquadrant/cardano-node
     cd cardano-node
@@ -44,15 +48,15 @@ https://github.com/dquadrant/plutus-apps
     cabal run cardano-cli -- rpc ada_getBalance addr_test1qrmntnd29t3kpnn8uf7d9asr3fzvw7lnah55h52yvaxnfe4g2v2ge520usmkn0zcl46gy38877hej5cnqe6s602xpkyqtpcsrj
 ```
 
-### 4. Using marconi and marconi-mamba
- we found that marconi and marconi-mamba is not properly documented and had bugs we had to fix before using it. Marconi and marconi-mamba project needs further polishing and also refactoring for making it easily integratable with  backends other than sqlite.
+### 4. Using `marconi` and `marconi-mamba`
+ While working with marconi and marconi-mamba, we found these packages are not properly documented yet. Further, we discovered some bugs which we had to fix before we could using it. In our opinion, these projects need further polishing and refactoring to make the integration with backends other than sqlite easier.
 
 ### 5. Full implementation
- We found that json-rpc is versatile and add more features/methods to it is easy.
- Json-rpc can be used not just for querying data but can also be extended for event subscription.
+ Based on our experience, we consider that json-rpc is versatile and adding more features/methods to it is easy.
+ Further, json-rpc can be used not just for querying data but can also be extended for event subscription.
 
 
-Future implementation can add following rpcs, but it's not limited to it.
+Future implementation can add the following RPCs, (but it's not limited to it).
 #### query (including historical data)
 - ada_getBlock (blockHash)
 - ada_getTransaction (txid ,includemempool=true,false)
